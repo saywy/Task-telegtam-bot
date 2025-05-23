@@ -48,18 +48,38 @@ task_pages = {}
 LETTERS_PER_PAGE = 5
 letter_pages = {}
 
+password = 1122334455
+
 # ID пользователя, которому отправляем уведомление
 NOTIFICATION_USER_ID = 7008792859
+
+# Добавляем состояние для проверки пароля
+USER_STATE_PASSWORD = 0
+user_states = {}
 
 
 # Обработчик команды /start
 @client.on(events.NewMessage(pattern='/start'))
 async def start(event):
     user_id = event.sender_id
-    user = await client.get_entity(user_id)
-    username = user.username if user.username else 'NONE'
-    db.add_user(user_id, username)
-    await event.respond('Привет! Используйте меню для управления задачами.', buttons=kb.main_keyboard())
+    user_states[user_id] = {'state': USER_STATE_PASSWORD}
+    await event.respond('Пожалуйста, введите пароль:')
+
+
+# Обработчик для ввода пароля
+@client.on(events.NewMessage)
+async def handle_password(event):
+    user_id = event.sender_id
+    if user_id in user_states and user_states[user_id]['state'] == USER_STATE_PASSWORD:
+        entered_password = event.text
+        if entered_password == str(password):
+            user = await client.get_entity(user_id)
+            username = user.username if user.username else 'NONE'
+            db.add_user(user_id, username)
+            await event.respond('Привет! Используйте меню для управления задачами.', buttons=kb.main_keyboard())
+            del user_states[user_id]  # Удаляем состояние после успешной аутентификации
+        else:
+            await event.respond('Неверный пароль. Пожалуйста, попробуйте еще раз:')
 
 
 # Обработчик нажатия на кнопку "Создать задание"
